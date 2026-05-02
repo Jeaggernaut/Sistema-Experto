@@ -12,21 +12,19 @@ def main():
         motor.agregar_hecho(hecho)
 
     print("\n--- RESULTADOS ---")
+    mostrar_resultado("Arquitectura", motor.consultar("arquitectura(X)"))
+    mostrar_resultado("API",          motor.consultar("api(X)"))
+    mostrar_resultado("Tecnologia",   motor.consultar("tecnologia(X)"))
+    mostrar_resultado("Diagnostico",  motor.consultar("problema(X)"))
+    mostrar_resultado("Evaluacion",   motor.consultar("evaluacion(X)"))
 
-    print("Arquitectura:")
-    print(motor.consultar("arquitectura(X)"))
-
-    print("API:")
-    print(motor.consultar("api(X)"))
-
-    print("Tecnologia:")
-    print(motor.consultar("tecnologia(X)"))
-
-    print("Diagnostico:")
-    print(motor.consultar("problema(X)"))
-
-    print("Evaluacion:")
-    print(motor.consultar("evaluacion(X)"))
+def mostrar_resultado(etiqueta, resultados):
+    print(f"{etiqueta}:", end=" ")
+    if not resultados:
+        print(" Sin resultados")
+    else:
+        for r in resultados:
+            print(f"{r['X']}")
 
 if __name__ == "__main__":
     main()
