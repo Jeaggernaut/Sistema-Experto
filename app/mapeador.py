@@ -1,10 +1,18 @@
-def mapear_respuestas(respuestas: dict):
-    hechos = []
+_VALORES_VALIDOS: dict[str, set] = {
+    "tipo_app":    {"web", "movil", "backend"},
+    "escala":      {"baja", "media", "alta"},
+    "equipo":      {"pequeno", "grande"},
+    "tiempo":      {"rapido", "normal"},
+    "complejidad": {"baja", "media", "alta"},
+}
 
-    hechos.append(f"tipo_app({respuestas['tipo_app']})")
-    hechos.append(f"escala({respuestas['escala']})")
-    hechos.append(f"equipo({respuestas['equipo']})")
-    hechos.append(f"tiempo({respuestas['tiempo']})")
-    hechos.append(f"complejidad({respuestas['complejidad']})")
 
-    return hechos
+def mapear_respuestas(respuestas: dict) -> list[str]:
+    for clave, valor in respuestas.items():
+        permitidos = _VALORES_VALIDOS.get(clave)
+        if permitidos and valor not in permitidos:
+            raise ValueError(
+                f"Valor inválido para '{clave}': '{valor}'. "
+                f"Opciones permitidas: {sorted(permitidos)}"
+            )
+    return [f"{clave}({valor})" for clave, valor in respuestas.items()]

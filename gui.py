@@ -1,119 +1,258 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 from app.motor import MotorExperto
 from app.mapeador import mapear_respuestas
+
+# ── Paleta ────────────────────────────────────────────────────────────────────
+BG         = "#F0F4F8"
+CARD_BG    = "#FFFFFF"
+HDR_BG     = "#1B2A4A"
+HDR_FG     = "#FFFFFF"
+HDR_SUB    = "#93C5FD"
+ACCENT     = "#2563EB"
+ACCENT_HOV = "#1D4ED8"
+BTN2_BG    = "#E2E8F0"
+BTN2_FG    = "#374151"
+TEXT       = "#1F2937"
+MUTED      = "#6B7280"
+RESULT_BG  = "#F8FAFC"
+BORDER     = "#E5E7EB"
+ERROR_FG   = "#DC2626"
 
 
 class SistemaExpertoGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("Sistema Experto")
-        self.root.geometry("500x600")
-        self.root.config(padx=20, pady=20)
+        self.root.title("Sistema Experto — Recomendación de Tecnologías")
+        self.root.geometry("640x740")
+        self.root.minsize(540, 600)
+        self.root.resizable(True, True)
+        self.root.configure(bg=BG)
 
-        # Titulo
-        tk.Label(root, text="Recomendación de Tecnologías",
-                 font=("Arial", 16, "bold")).pack(pady=10)
+        self._aplicar_estilos()
+        self._construir_header()
+        self._construir_cuerpo()
 
-        # Preguntas a realizar
-        marco_preguntas = ttk.LabelFrame(
-            root, text=" Parámetros del Proyecto ")
-        marco_preguntas.pack(fill="x", pady=10, ipadx=10, ipady=10)
+    # ── Estilos ttk ───────────────────────────────────────────────────────────
+    def _aplicar_estilos(self):
+        s = ttk.Style(self.root)
+        s.theme_use("clam")
+        s.configure(".", background=BG, foreground=TEXT, font=("Segoe UI", 10))
 
-        # Diccionario de variables [interfaz]
+        s.configure("TCombobox",
+                    fieldbackground=CARD_BG, background=CARD_BG,
+                    foreground=TEXT, padding=(6, 5))
+        s.map("TCombobox",
+              fieldbackground=[("readonly", CARD_BG)],
+              selectbackground=[("readonly", ACCENT)],
+              selectforeground=[("readonly", "#FFFFFF")])
+
+        s.configure("Primary.TButton",
+                    background=ACCENT, foreground="#FFFFFF",
+                    font=("Segoe UI", 10, "bold"),
+                    padding=(20, 9), relief="flat", borderwidth=0)
+        s.map("Primary.TButton",
+              background=[("active", ACCENT_HOV), ("pressed", ACCENT_HOV)])
+
+        s.configure("Secondary.TButton",
+                    background=BTN2_BG, foreground=BTN2_FG,
+                    font=("Segoe UI", 10),
+                    padding=(20, 9), relief="flat", borderwidth=0)
+        s.map("Secondary.TButton",
+              background=[("active", "#CBD5E1"), ("pressed", "#CBD5E1")])
+
+        s.configure("Vertical.TScrollbar",
+                    background=BORDER, troughcolor=RESULT_BG,
+                    borderwidth=0, arrowsize=12, relief="flat")
+
+    # ── Header ────────────────────────────────────────────────────────────────
+    def _construir_header(self):
+        hdr = tk.Frame(self.root, bg=HDR_BG)
+        hdr.pack(fill="x")
+        tk.Label(hdr, text="Sistema Experto",
+                 bg=HDR_BG, fg=HDR_FG,
+                 font=("Segoe UI", 18, "bold"), anchor="w"
+                 ).pack(anchor="w", padx=28, pady=(22, 2))
+        tk.Label(hdr, text="Recomendación de tecnologías para tu proyecto",
+                 bg=HDR_BG, fg=HDR_SUB,
+                 font=("Segoe UI", 10), anchor="w"
+                 ).pack(anchor="w", padx=28, pady=(0, 22))
+
+    # ── Cuerpo ────────────────────────────────────────────────────────────────
+    def _construir_cuerpo(self):
+        cuerpo = tk.Frame(self.root, bg=BG)
+        cuerpo.pack(fill="both", expand=True, padx=24, pady=20)
+        cuerpo.columnconfigure(0, weight=1)
+        cuerpo.rowconfigure(2, weight=1)
+
+        self._card_parametros(cuerpo)   # row 0
+        self._fila_botones(cuerpo)      # row 1
+        self._card_resultados(cuerpo)   # row 2
+
+    # ── Fábrica de cards ──────────────────────────────────────────────────────
+    def _nueva_card(self, parent, row, titulo, sticky="ew", pady=0):
+        wrapper = tk.Frame(parent, bg=CARD_BG,
+                           highlightthickness=1,
+                           highlightbackground=BORDER)
+        wrapper.grid(row=row, column=0, sticky=sticky, pady=pady)
+        tk.Label(wrapper, text=titulo,
+                 bg=CARD_BG, fg=ACCENT,
+                 font=("Segoe UI", 10, "bold"), anchor="w"
+                 ).pack(fill="x", padx=16, pady=(14, 0))
+        tk.Frame(wrapper, bg=BORDER, height=1).pack(fill="x",
+                                                     padx=16, pady=(8, 0))
+        content = tk.Frame(wrapper, bg=CARD_BG)
+        content.pack(fill="both", expand=True)
+        return content
+
+    # ── Card: Parámetros ──────────────────────────────────────────────────────
+    def _card_parametros(self, parent):
+        content = self._nueva_card(parent, row=0,
+                                   titulo="Parámetros del Proyecto",
+                                   sticky="ew", pady=(0, 14))
+        content.columnconfigure(1, weight=1)
+
         self.variables = {
-            "tipo_app": tk.StringVar(value="web"),
-            "escala": tk.StringVar(value="baja"),
-            "equipo": tk.StringVar(value="pequeno"),
-            "tiempo": tk.StringVar(value="normal"),
-            "complejidad": tk.StringVar(value="baja")
+            "tipo_app":    tk.StringVar(value="web"),
+            "escala":      tk.StringVar(value="baja"),
+            "equipo":      tk.StringVar(value="pequeno"),
+            "tiempo":      tk.StringVar(value="normal"),
+            "complejidad": tk.StringVar(value="baja"),
         }
+        campos = [
+            ("Tipo de app",  "tipo_app",    ["web", "movil", "backend"]),
+            ("Escala",       "escala",      ["baja", "media", "alta"]),
+            ("Equipo",       "equipo",      ["pequeno", "grande"]),
+            ("Tiempo",       "tiempo",      ["rapido", "normal"]),
+            ("Complejidad",  "complejidad", ["baja", "media", "alta"]),
+        ]
+        for i, (label, key, opts) in enumerate(campos):
+            tk.Label(content, text=label,
+                     bg=CARD_BG, fg=TEXT,
+                     font=("Segoe UI", 10), anchor="w", width=14
+                     ).grid(row=i, column=0, sticky="w",
+                            padx=(16, 8), pady=9)
+            ttk.Combobox(content, textvariable=self.variables[key],
+                         values=opts, state="readonly",
+                         font=("Segoe UI", 10)
+                         ).grid(row=i, column=1, sticky="ew",
+                                padx=(0, 16), pady=9)
 
-        # Menus desplegables
-        self.crear_opcion(marco_preguntas, "Tipo de app:",
-                          "tipo_app", ["web", "movil", "backend"])
-        self.crear_opcion(marco_preguntas, "Escala:",
-                          "escala", ["baja", "media", "alta"])
-        self.crear_opcion(marco_preguntas, "Equipo:",
-                          "equipo", ["pequeno", "grande"])
-        self.crear_opcion(marco_preguntas, "Tiempo:",
-                          "tiempo", ["rapido", "normal"])
-        self.crear_opcion(marco_preguntas, "Complejidad:",
-                          "complejidad", ["baja", "media", "alta"])
+    # ── Fila de botones ───────────────────────────────────────────────────────
+    def _fila_botones(self, parent):
+        frame = tk.Frame(parent, bg=BG)
+        frame.grid(row=1, column=0, sticky="w", pady=(0, 14))
+        ttk.Button(frame, text="Ejecutar Consulta",
+                   style="Primary.TButton",
+                   command=self.ejecutar_consulta
+                   ).pack(side="left", padx=(0, 10))
+        ttk.Button(frame, text="Limpiar",
+                   style="Secondary.TButton",
+                   command=self.limpiar_resultados
+                   ).pack(side="left")
 
-        # Boton de Consultas
-        ttk.Button(root, text="Ejecutar Consulta",
-                   command=self.ejecutar_consulta).pack(pady=15)
+    # ── Card: Resultados ──────────────────────────────────────────────────────
+    def _card_resultados(self, parent):
+        content = self._nueva_card(parent, row=2,
+                                   titulo="Resultados de la Inferencia",
+                                   sticky="nsew", pady=0)
+        content.rowconfigure(0, weight=1)
+        content.columnconfigure(0, weight=1)
 
-        # Resuldos
-        tk.Label(root, text="Resultados de la Inferencia:",
-                 font=("Arial", 12, "bold")).pack(anchor="w")
+        scrollbar = ttk.Scrollbar(content, orient="vertical")
+        scrollbar.grid(row=0, column=1, sticky="ns", pady=(0, 14))
 
-        # MARCO [texto / scrollbar]
-        frame_resultados = tk.Frame(root)
-        frame_resultados.pack(pady=5, fill="both", expand=True)
-
-        # [Scrollbar] -> para resultados largos
-        scrollbar = ttk.Scrollbar(frame_resultados)
-        scrollbar.pack(side="right", fill="y")
-
-       # Caja texto -> vincula al scrollbar
-        self.caja_resultados = tk.Text(frame_resultados, height=12, width=55, font=(
-            "Consolas", 10), yscrollcommand=scrollbar.set)
-        self.caja_resultados.pack(side="left", fill="both", expand=True)
-
-        # Configuracion del scrollbar
+        self.caja_resultados = tk.Text(
+            content,
+            font=("Consolas", 10),
+            bg=RESULT_BG, fg=TEXT,
+            relief="flat", borderwidth=0,
+            highlightthickness=1,
+            highlightbackground=BORDER,
+            highlightcolor=ACCENT,
+            yscrollcommand=scrollbar.set,
+            wrap="word",
+            padx=14, pady=10,
+            spacing1=2, spacing3=3,
+            state=tk.DISABLED,
+        )
+        self.caja_resultados.grid(row=0, column=0, sticky="nsew",
+                                   padx=(12, 4), pady=(0, 14))
         scrollbar.config(command=self.caja_resultados.yview)
 
-        self.caja_resultados.config(state=tk.DISABLED)  # Bloquear edición
+        self.caja_resultados.tag_configure(
+            "header", font=("Segoe UI", 10, "bold"),
+            foreground=ACCENT, spacing1=6, spacing3=2)
+        self.caja_resultados.tag_configure(
+            "item", foreground=TEXT, lmargin1=12, lmargin2=20)
+        self.caja_resultados.tag_configure(
+            "muted", font=("Segoe UI", 9, "italic"),
+            foreground=MUTED, lmargin1=12)
+        self.caja_resultados.tag_configure(
+            "processing", font=("Segoe UI", 10, "italic"),
+            foreground=MUTED)
+        self.caja_resultados.tag_configure(
+            "error", font=("Segoe UI", 10, "bold"),
+            foreground=ERROR_FG)
 
-    def crear_opcion(self, cabeza, texto, clave, opciones):
-        # [Función auxiliar] -> etiquetas y comboboxes ordenados
-        frame = tk.Frame(cabeza)
-        frame.pack(fill="x", pady=5)
-        tk.Label(frame, text=texto, width=15, anchor="w").pack(side="left")
-        combo = ttk.Combobox(
-            frame, textvariable=self.variables[clave], values=opciones, state="readonly")
-        combo.pack(side="left", fill="x", expand=True)
-
-    def ejecutar_consulta(self):
-        # 1.- Limpiar los resultados anteriores
+    # ── Lógica (sin cambios respecto al original) ─────────────────────────────
+    def limpiar_resultados(self):
         self.caja_resultados.config(state=tk.NORMAL)
         self.caja_resultados.delete(1.0, tk.END)
-        self.caja_resultados.insert(tk.END, "Procesando reglas lógicas...\n\n")
-        self.root.update()
-
-        # 2. Inicializar el motor [limpiar hechos anteriores]
-        motor = MotorExperto()
-
-        # 3. Respuestas de interfaz
-        respuestas = {clave: var.get()
-                      for clave, var in self.variables.items()}
-
-        # 4. Mapeao e insercion de hechos en Prolog
-        hechos = mapear_respuestas(respuestas)
-        for hecho in hechos:
-            motor.agregar_hecho(hecho)
-
-        # 5. Consultar al motor
-        self.mostrar_resultado(
-            "Arquitectura", motor.consultar("arquitectura(X)"))
-        self.mostrar_resultado("API", motor.consultar("api(X)"))
-        self.mostrar_resultado("Tecnología", motor.consultar("tecnologia(X)"))
-        self.mostrar_resultado("Diagnóstico", motor.consultar("problema(X)"))
-        self.mostrar_resultado("Evaluación", motor.consultar("evaluacion(X)"))
-
         self.caja_resultados.config(state=tk.DISABLED)
 
-    def mostrar_resultado(self, etiqueta, resultados):
-        texto = f"📌 {etiqueta}:\n"
-        if not resultados:
-            texto += "   ❌ Sin resultados (Faltan reglas)\n"
-        else:
-            for r in resultados:
-                texto += f"   ✅ {r['X']}\n"
+    def ejecutar_consulta(self):
+        self.caja_resultados.config(state=tk.NORMAL)
+        self.caja_resultados.delete(1.0, tk.END)
+        self.caja_resultados.insert(tk.END, "Procesando reglas lógicas…\n", "processing")
+        self.root.update()
 
-        self.caja_resultados.insert(tk.END, texto + "\n")
+        try:
+            motor = MotorExperto()
+            respuestas = {clave: var.get() for clave, var in self.variables.items()}
+            hechos = mapear_respuestas(respuestas)
+            for hecho in hechos:
+                motor.agregar_hecho(hecho)
+
+            self.caja_resultados.delete(1.0, tk.END)
+            self.mostrar_resultado("Arquitectura", motor.consultar("arquitectura(X)"))
+            self.mostrar_resultado("API",          motor.consultar("api(X)"))
+            self.mostrar_resultado("Tecnología",   motor.consultar("tecnologia(X)"))
+            self.mostrar_resultado("Diagnóstico",  motor.consultar("problema(X)"))
+            self.mostrar_resultado("Evaluación",   motor.consultar("evaluacion(X)"))
+
+        except FileNotFoundError as e:
+            self._mostrar_error(f"Archivo de conocimiento no encontrado:\n{e}")
+        except RuntimeError as e:
+            self._mostrar_error(f"Error en el motor de inferencia:\n{e}")
+        except Exception as e:
+            self._mostrar_error(f"Error inesperado:\n{e}")
+        finally:
+            self.caja_resultados.config(state=tk.DISABLED)
+
+    def mostrar_resultado(self, etiqueta, resultados):
+        self.caja_resultados.insert(tk.END, f"{etiqueta}\n", "header")
+        vistos = set()
+        unicos = []
+        for r in resultados:
+            val = r['X']
+            if val not in vistos:
+                vistos.add(val)
+                unicos.append(r)
+        if not unicos:
+            self.caja_resultados.insert(tk.END,
+                "Sin resultados para esta combinación\n\n", "muted")
+        else:
+            for r in unicos:
+                self.caja_resultados.insert(tk.END, f"▸  {r['X']}\n", "item")
+            self.caja_resultados.insert(tk.END, "\n")
+
+    def _mostrar_error(self, mensaje: str):
+        self.caja_resultados.config(state=tk.NORMAL)
+        self.caja_resultados.delete(1.0, tk.END)
+        self.caja_resultados.insert(tk.END, "Error del sistema\n\n", "error")
+        self.caja_resultados.insert(tk.END, mensaje + "\n")
+        messagebox.showerror("Error del Sistema Experto", mensaje)
 
 
 if __name__ == "__main__":
