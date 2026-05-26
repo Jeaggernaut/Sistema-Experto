@@ -1,7 +1,16 @@
+import os
 import tkinter as tk
 from tkinter import ttk, messagebox
 from app.motor import MotorExperto
 from app.mapeador import mapear_respuestas
+
+try:
+    from PIL import Image, ImageTk
+    _PIL = True
+except ImportError:
+    _PIL = False
+
+_ASSETS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app", "assets")
 
 # ── Paleta ────────────────────────────────────────────────────────────────────
 BG         = "#F0F4F8"
@@ -65,18 +74,61 @@ class SistemaExpertoGUI:
                     background=BORDER, troughcolor=RESULT_BG,
                     borderwidth=0, arrowsize=12, relief="flat")
 
+    # ── Carga de imágenes ─────────────────────────────────────────────────────
+    def _cargar_imagen(self, nombre: str, altura: int):
+        if not _PIL:
+            return None
+        ruta = os.path.join(_ASSETS, nombre)
+        if not os.path.isfile(ruta):
+            return None
+        try:
+            img = Image.open(ruta).convert("RGBA")
+            # Redimensionar primero: de ~360 000 px a ~10 000 px → loop veloz
+            w, h = img.size
+            nuevo_w = max(1, round(w * altura / h))
+            img = img.resize((nuevo_w, altura), Image.LANCZOS)
+            px = img.load()
+            for y in range(img.height):
+                for x in range(img.width):
+                    r, g, b, a = px[x, y]
+                    if r > 220 and g > 220 and b > 220:
+                        px[x, y] = (0, 0, 0, 0)         # blanco → transparente
+                    elif r < 80 and g < 80 and b < 100:
+                        px[x, y] = (255, 255, 255, a)   # oscuro → blanco
+            return ImageTk.PhotoImage(img)
+        except Exception:
+            return None
+
     # ── Header ────────────────────────────────────────────────────────────────
     def _construir_header(self):
         hdr = tk.Frame(self.root, bg=HDR_BG)
         hdr.pack(fill="x")
-        tk.Label(hdr, text="Sistema Experto",
+        hdr.columnconfigure(1, weight=1)
+
+        self._img4 = self._cargar_imagen("image4.png", 110)
+        self._img5 = self._cargar_imagen("image5.png", 90)
+
+        # Columna 0 — escudo ITSP directo sobre el header azul
+        if self._img4:
+            tk.Label(hdr, image=self._img4, bg=HDR_BG).grid(
+                row=0, column=0, padx=(20, 0), pady=16, sticky="w")
+
+        # Columna 1 — título + subtítulo (elemento principal)
+        titulo_frame = tk.Frame(hdr, bg=HDR_BG)
+        titulo_frame.grid(row=0, column=1, sticky="ew", padx=18, pady=(22, 22))
+        tk.Label(titulo_frame, text="Sistema Experto",
                  bg=HDR_BG, fg=HDR_FG,
                  font=("Segoe UI", 18, "bold"), anchor="w"
-                 ).pack(anchor="w", padx=28, pady=(22, 2))
-        tk.Label(hdr, text="Recomendación de tecnologías para tu proyecto",
+                 ).pack(anchor="w")
+        tk.Label(titulo_frame, text="Recomendación de tecnologías para tu proyecto",
                  bg=HDR_BG, fg=HDR_SUB,
                  font=("Segoe UI", 10), anchor="w"
-                 ).pack(anchor="w", padx=28, pady=(0, 22))
+                 ).pack(anchor="w")
+
+        # Columna 2 — logo TecNM directo sobre el header azul
+        if self._img5:
+            tk.Label(hdr, image=self._img5, bg=HDR_BG).grid(
+                row=0, column=2, padx=(0, 20), pady=16, sticky="e")
 
     # ── Cuerpo ────────────────────────────────────────────────────────────────
     def _construir_cuerpo(self):
@@ -256,6 +308,9 @@ class SistemaExpertoGUI:
 
 
 if __name__ == "__main__":
-    ventana = tk.Tk()
-    app = SistemaExpertoGUI(ventana)
-    ventana.mainloop()
+    try:
+        ventana = tk.Tk()
+        app = SistemaExpertoGUI(ventana)
+        ventana.mainloop()
+    except KeyboardInterrupt:
+        pass
