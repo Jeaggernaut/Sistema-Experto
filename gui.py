@@ -34,7 +34,7 @@ class SistemaExpertoGUI:
         self.root = root
         self.root.title("Sistema Experto — Recomendación de Tecnologías")
         self.root.geometry("640x740")
-        self.root.minsize(540, 600)
+        self.root.minsize(840, 600)
         self.root.resizable(True, True)
         self.root.configure(bg=BG)
 
@@ -82,19 +82,40 @@ class SistemaExpertoGUI:
         if not os.path.isfile(ruta):
             return None
         try:
+            from PIL import ImageChops
             img = Image.open(ruta).convert("RGBA")
-            # Redimensionar primero: de ~360 000 px a ~10 000 px → loop veloz
+            r, g, b, a = img.split()
+
+            # Tablas de búsqueda → Pillow las aplica en C, sin loop Python
+            lut_blanco   = [255 if i > 220 else 0 for i in range(256)]
+            lut_oscuro   = [255 if i <  80 else 0 for i in range(256)]
+            lut_oscuro_b = [255 if i < 100 else 0 for i in range(256)]
+
+            # Máscara píxeles blancos (r>220 AND g>220 AND b>220)
+            mask_blanco = ImageChops.multiply(
+                ImageChops.multiply(r.point(lut_blanco), g.point(lut_blanco)),
+                b.point(lut_blanco),
+            )
+            # Máscara píxeles oscuros (r<80 AND g<80 AND b<100)
+            mask_oscuro = ImageChops.multiply(
+                ImageChops.multiply(r.point(lut_oscuro), g.point(lut_oscuro)),
+                b.point(lut_oscuro_b),
+            )
+
+            # Aplicar: blanco → transparente
+            nuevo_a = ImageChops.multiply(a, ImageChops.invert(mask_blanco))
+            # Aplicar: oscuro → blanco (visible sobre fondo azul)
+            blanco = Image.new("L", img.size, 255)
+            nuevo_r = Image.composite(blanco, r, mask_oscuro)
+            nuevo_g = Image.composite(blanco, g, mask_oscuro)
+            nuevo_b_ch = Image.composite(blanco, b, mask_oscuro)
+
+            img = Image.merge("RGBA", (nuevo_r, nuevo_g, nuevo_b_ch, nuevo_a))
+
+            # Redimensionar después del procesamiento (anti-aliasing limpio)
             w, h = img.size
             nuevo_w = max(1, round(w * altura / h))
             img = img.resize((nuevo_w, altura), Image.LANCZOS)
-            px = img.load()
-            for y in range(img.height):
-                for x in range(img.width):
-                    r, g, b, a = px[x, y]
-                    if r > 220 and g > 220 and b > 220:
-                        px[x, y] = (0, 0, 0, 0)         # blanco → transparente
-                    elif r < 80 and g < 80 and b < 100:
-                        px[x, y] = (255, 255, 255, a)   # oscuro → blanco
             return ImageTk.PhotoImage(img)
         except Exception:
             return None
@@ -105,7 +126,7 @@ class SistemaExpertoGUI:
         hdr.pack(fill="x")
         hdr.columnconfigure(1, weight=1)
 
-        self._img4 = self._cargar_imagen("image4.png", 110)
+        self._img4 = self._cargar_imagen("image4.png", 120)
         self._img5 = self._cargar_imagen("image5.png", 90)
 
         # Columna 0 — escudo ITSP directo sobre el header azul
